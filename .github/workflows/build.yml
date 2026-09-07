@@ -1,0 +1,56 @@
+name: Build PresencePro APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find and extract PresencePro project
+        run: |
+          set -e
+          ZIP="$(find . -maxdepth 2 -type f -name 'PresencePro_APK_CloudBuild.zip' -print -quit)"
+
+          if [ -z "$ZIP" ]; then
+            echo "PresencePro_APK_CloudBuild.zip not found"
+            exit 1
+          fi
+
+          mkdir -p build_source
+          unzip -q "$ZIP" -d build_source
+
+          PUBSPEC="$(find build_source -type f -name pubspec.yaml -print -quit)"
+
+          if [ -z "$PUBSPEC" ]; then
+            echo "pubspec.yaml not found inside the ZIP"
+            exit 1
+          fi
+
+          echo "PROJECT_DIR=$(dirname "$PUBSPEC")" >> "$GITHUB_ENV"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: flutter pub get
+
+      - name: Build APK
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: flutter build apk --release
+
+      - name: Save APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PresencePro-release-apk
+          path: ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk/app-release.apk
