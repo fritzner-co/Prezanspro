@@ -14,10 +14,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Find and extract PresencePro project
+      - name:  Find and extract PresencePro project
         run: |
           set -e
-          ZIP="$(find . -maxdepth 2 -type f -name 'PresencePro_APK_CloudBuild.zip' -print -quit)"
+
+          ZIP="$(find . -maxdepth 2 -type f -name 'PresencePro_APK_CloudBuild.zip' | head -n 1)"
 
           if [ -z "$ZIP" ]; then
             echo "PresencePro_APK_CloudBuild.zip not found"
@@ -27,15 +28,18 @@ jobs:
           mkdir -p build_source
           unzip -q "$ZIP" -d build_source
 
-          PUBSPEC="$(find build_source -type f -name pubspec.yaml -print -quit)"
+          PUBSPEC="$(find build_source -type f -iname 'pubspec.yaml' | head -n 1)"
 
           if [ -z "$PUBSPEC" ]; then
             echo "pubspec.yaml not found inside the ZIP"
+            echo "Files found inside ZIP:"
+            find build_source -maxdepth 4 -type f | head -100
             exit 1
           fi
 
-          echo "PROJECT_DIR=$(dirname "$PUBSPEC")" >> "$GITHUB_ENV"
-
+          PROJECT_DIR="$(dirname "$PUBSPEC")"
+          echo "Flutter project found in: $PROJECT_DIR"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
